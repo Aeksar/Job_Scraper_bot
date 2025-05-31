@@ -7,7 +7,6 @@ logging.basicConfig(
     encoding='UTF-8'
 )
 
-
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
