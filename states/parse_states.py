@@ -2,7 +2,7 @@ from aiogram.fsm.state import State, StatesGroup
 
 
 class ParseStates(StatesGroup):
-    name = State()
+    text = State()
     city = State()
     salary = State()
     notification = State()

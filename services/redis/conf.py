@@ -3,7 +3,7 @@ from redis.asyncio.client import Redis
 from config import redis_cfg, logger
 
 
-def get_redis_client() -> Redis:
+async def get_redis_client() -> Redis:
     
     try:
         redis_conn = Redis(
@@ -13,8 +13,9 @@ def get_redis_client() -> Redis:
             port=redis_cfg.PORT,
             db=redis_cfg.DB,
             decode_responses=True
-        )
-        logger.debug(f'Succeful connect to redis')
+        ) 
+        await redis_conn.ping()
+        logger.debug(f'Successful connect to redis')
         return redis_conn
     
     except Exception as e:

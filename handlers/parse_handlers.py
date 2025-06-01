@@ -23,47 +23,83 @@ def create_skip_keyboard(state: str):
     skip_button = InlineKeyboardButton(text="Пропустить", callback_data=f"skip:{state}")
     return InlineKeyboardMarkup(inline_keyboard=[[skip_button]])
 
-@rout.message(Command("start"))
-async def start_command(msg: Message):
-    await msg.answer("qq")
+state_actions = {
+    "text": {
+        "state": ParseStates.city,
+        "question": "Город",
+        "keyboard_arg": "city"
+    },
+    "city": {
+        "state": ParseStates.salary,
+        "question": "Зарплата",
+        "keyboard_arg": "salary"
+    },
+    "salary": {
+        "state": None, 
+        "question": None,
+        "keyboard_arg": None
+    }
+}
+    
+async def process_answer(msg: Message, state: FSMContext, current_state: str, data_key: str):
+    await state.update_data({data_key: msg.text.replace(" ", "")})
+    if current_state in state_actions:
+        action = state_actions[current_state]
+        if action["state"] is not None:
+            kb = create_skip_keyboard(action["keyboard_arg"])
+            await msg.answer(action["question"], reply_markup=kb)
+            await state.set_state(action["state"])
+        else:
+            await msg.answer("Поиск вакансий\nЭто может занять 10-15 секунд")
+            data = await state.get_data()
+            chat_id = msg.chat.id
+            corelation_id = str(uuid.uuid4())
+            redis = await get_redis_client()
+            await redis.set(corelation_id, chat_id)
+            await send_message(corelation_id, data)
+            await state.clear()
     
     
 @rout.message(Command("parse"))
-async def proccess_parse(msg: Message, state: FSMContext):
-    await msg.answer("Введите название желаемой должности")
-    await state.set_state(ParseStates.name)
+async def start_parse(msg: Message, state: FSMContext):
+    kb = create_skip_keyboard("text")
+    await msg.answer("должность", reply_markup=kb)
+    await state.set_state(ParseStates.text)
     
     
-@rout.message(ParseStates.name)
+@rout.message(ParseStates.text)
 async def input_name(msg: Message, state: FSMContext):
-    await state.set_data({"text": msg.text})
-    await msg.answer("Город")
-    await state.set_state(ParseStates.city)
+    await process_answer(msg, state, "text", "text")
     
     
 @rout.message(ParseStates.city)
 async def input_city(msg: Message, state: FSMContext):
-    await state.update_data({"city": msg.text})
-    await msg.answer("Зарплата")
-    await state.set_state(ParseStates.salary)
+    await process_answer(msg, state, "city", "city")
     
     
 @rout.message(ParseStates.salary)
 async def input_salary(msg: Message, state: FSMContext):
-    data = await state.get_data()
-    if salary := msg.text.isdigit() or msg.text is "скип":
-        data["salary"] = salary if int(salary) < 10**9 else 10**9
-    else:
-        msg.answer("Введите сумму в рублях, состаящую из цифр")
-    
-    await msg.answer("Поиск вакансий\nЭто может занять 10-15 секунд")
-    chat_id = msg.chat.id
-    corelation_id = uuid.uuid4()
-    redis = get_redis_client()
-    await redis.set(str(corelation_id), chat_id)
-    await send_message(corelation_id, data)
-    
-    await state.clear()
+    await process_answer(msg, state, "salary", "salary")
     
 
+@rout.callback_query(F.data.startswith("skip:"))
+async def skip_question(callback: CallbackQuery, state: FSMContext):
+    callback.answer()
+    skip_to = callback.data.removeprefix("skip:")
     
+    if skip_to in state_actions:
+        await state.update_data({skip_to: None})
+        action = state_actions[skip_to]
+        if action["state"] is not None:
+            await state.set_state(action["state"])
+            kb = create_skip_keyboard(action["keyboard_arg"])
+            await callback.message.answer(action["question"], reply_markup=kb)
+        else:
+            await callback.message.answer("Поиск вакансий\nЭто может занять 10-15 секунд")
+            data = await state.get_data()
+            chat_id = callback.message.chat.id
+            corelation_id = str(uuid.uuid4())
+            redis = await get_redis_client()
+            await redis.set(corelation_id, chat_id)
+            await send_message(corelation_id, data)
+            
