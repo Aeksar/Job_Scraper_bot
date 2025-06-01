@@ -2,6 +2,10 @@ import aio_pika
 
 from config import rabbit_cfg, logger
 
+TTL = 30000
+D_TTL = 3
+
+
 async def get_conection():
     url = rabbit_cfg.get_url()
     connection =  await aio_pika.connect(url)
@@ -9,10 +13,11 @@ async def get_conection():
     return connection
 
 
-
 async def setup_rabbit():
+    global TTL
     connection = await get_conection()
     channel = await connection.channel()
-    await channel.declare_queue("parse")
+    args = {"x-message-ttl" : TTL}
+    await channel.declare_queue("parse", arguments=args)
     callback_queue = await channel.declare_queue(exclusive=True)
     return connection, channel, callback_queue

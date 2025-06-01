@@ -1,20 +1,15 @@
 from aiogram import Dispatcher, Router, F, Bot
-from aiogram.filters import Command, StateFilter
+from aiogram.filters import Command
 from aiogram.types import (
     Message,
     CallbackQuery,
-    FSInputFile,
     InlineKeyboardButton, 
     InlineKeyboardMarkup,
 )
 from aiogram.fsm.context import FSMContext
-from aio_pika.patterns import RPC
-import uuid
 
-from config import logger
 from states import ParseStates
 from services.rabbit import send_message
-from services.redis import get_redis_client
 
 
 rout = Router()
@@ -53,11 +48,9 @@ async def process_answer(msg: Message, state: FSMContext, current_state: str, da
             await msg.answer("Поиск вакансий\nЭто может занять 10-15 секунд")
             data = await state.get_data()
             chat_id = msg.chat.id
-            corelation_id = str(uuid.uuid4())
-            redis = await get_redis_client()
-            await redis.set(corelation_id, chat_id)
-            await send_message(corelation_id, data)
             await state.clear()
+            await send_message(chat_id, data)
+
     
     
 @rout.message(Command("parse"))
@@ -84,7 +77,7 @@ async def input_salary(msg: Message, state: FSMContext):
 
 @rout.callback_query(F.data.startswith("skip:"))
 async def skip_question(callback: CallbackQuery, state: FSMContext):
-    callback.answer()
+    await callback.answer()
     skip_to = callback.data.removeprefix("skip:")
     
     if skip_to in state_actions:
@@ -98,8 +91,6 @@ async def skip_question(callback: CallbackQuery, state: FSMContext):
             await callback.message.answer("Поиск вакансий\nЭто может занять 10-15 секунд")
             data = await state.get_data()
             chat_id = callback.message.chat.id
-            corelation_id = str(uuid.uuid4())
-            redis = await get_redis_client()
-            await redis.set(corelation_id, chat_id)
-            await send_message(corelation_id, data)
-            
+            await state.clear()
+            await send_message(chat_id, data)
+               

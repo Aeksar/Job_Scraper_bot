@@ -1,4 +1,5 @@
 from redis.asyncio.client import Redis
+from datetime import timedelta
 
 from config import redis_cfg, logger
 
