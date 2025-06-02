@@ -2,9 +2,8 @@ import aio_pika
 
 from config import rabbit_cfg, logger
 
-TTL = 30000
-D_TTL = 3
 
+TTL = 60000
 
 async def get_conection():
     url = rabbit_cfg.get_url()

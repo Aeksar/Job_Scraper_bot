@@ -1,5 +1,5 @@
 from aiogram import Dispatcher, Router, F, Bot
-from aiogram.filters import Command
+from aiogram.filters import Command, StateFilter
 from aiogram.types import (
     Message,
     CallbackQuery,
@@ -7,10 +7,11 @@ from aiogram.types import (
     InlineKeyboardMarkup,
 )
 from aiogram.fsm.context import FSMContext
+from typing import Optional
 
 from states import ParseStates
 from services.rabbit import send_message
-
+from config import logger
 
 rout = Router()
 
@@ -19,78 +20,59 @@ def create_skip_keyboard(state: str):
     return InlineKeyboardMarkup(inline_keyboard=[[skip_button]])
 
 state_actions = {
-    "text": {
+    None: {
+        "state": ParseStates.text,
+        "question": "Должность",
+        "keyboard_arg": "text",
+        "data_key": None,
+    },
+    "ParseStates:text": {
         "state": ParseStates.city,
         "question": "Город",
-        "keyboard_arg": "city"
+        "keyboard_arg": "city",
+        "data_key": "text",
     },
-    "city": {
+    "ParseStates:city": {
         "state": ParseStates.salary,
         "question": "Зарплата",
-        "keyboard_arg": "salary"
+        "keyboard_arg": "salary",
+        "data_key": "city"
     },
-    "salary": {
+    "ParseStates:salary": {
         "state": None, 
-        "question": None,
-        "keyboard_arg": None
+        "question": "Поиск вакансий\nЭто может занять 10-15 секунд\n60 край брат",
+        "keyboard_arg": None,
+        "data_key": "salary"
     }
 }
-    
-async def process_answer(msg: Message, state: FSMContext, current_state: str, data_key: str):
-    await state.update_data({data_key: msg.text.replace(" ", "")})
-    if current_state in state_actions:
-        action = state_actions[current_state]
-        if action["state"] is not None:
-            kb = create_skip_keyboard(action["keyboard_arg"])
-            await msg.answer(action["question"], reply_markup=kb)
-            await state.set_state(action["state"])
-        else:
-            await msg.answer("Поиск вакансий\nЭто может занять 10-15 секунд")
-            data = await state.get_data()
-            chat_id = msg.chat.id
-            await state.clear()
-            await send_message(chat_id, data)
 
-    
-    
 @rout.message(Command("parse"))
-async def start_parse(msg: Message, state: FSMContext):
-    kb = create_skip_keyboard("text")
-    await msg.answer("должность", reply_markup=kb)
-    await state.set_state(ParseStates.text)
-    
-    
-@rout.message(ParseStates.text)
-async def input_name(msg: Message, state: FSMContext):
-    await process_answer(msg, state, "text", "text")
-    
-    
-@rout.message(ParseStates.city)
-async def input_city(msg: Message, state: FSMContext):
-    await process_answer(msg, state, "city", "city")
-    
-    
-@rout.message(ParseStates.salary)
-async def input_salary(msg: Message, state: FSMContext):
-    await process_answer(msg, state, "salary", "salary")
-    
+@rout.message(StateFilter(ParseStates))
+async def answer_question(msg: Message, state: FSMContext):
+    current_state = await state.get_state()
+    action = state_actions[current_state]
+    if data_key := action["data_key"]:
+        await state.update_data({data_key: msg.text})
+    await process_action(msg, state, action)
+
 
 @rout.callback_query(F.data.startswith("skip:"))
 async def skip_question(callback: CallbackQuery, state: FSMContext):
     await callback.answer()
     skip_to = callback.data.removeprefix("skip:")
-    
-    if skip_to in state_actions:
-        await state.update_data({skip_to: None})
-        action = state_actions[skip_to]
+    await state.update_data({skip_to: None})
+    action = state_actions[skip_to]
+    await process_action(callback.message, state, action)
+            
+
+async def process_action(msg: Message, state: FSMContext, action: dict[Optional[str], Optional[str]]):
         if action["state"] is not None:
-            await state.set_state(action["state"])
             kb = create_skip_keyboard(action["keyboard_arg"])
-            await callback.message.answer(action["question"], reply_markup=kb)
+            await msg.answer(action["question"], reply_markup=kb)
+            await state.set_state(action["state"])
         else:
-            await callback.message.answer("Поиск вакансий\nЭто может занять 10-15 секунд")
+            await msg.answer(action["question"])
             data = await state.get_data()
-            chat_id = callback.message.chat.id
+            chat_id = msg.chat.id
             await state.clear()
             await send_message(chat_id, data)
-               
