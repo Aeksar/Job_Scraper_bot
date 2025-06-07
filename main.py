@@ -5,11 +5,10 @@ import asyncio
 from handlers import rout
 from config import TOKEN
 from services import checkout
-from services.redis import get_redis_client
+from services.redis import redis
 
 async def main():
     await checkout()
-    redis = await get_redis_client()
     bot = Bot(token=TOKEN)
     dp = Dispatcher(storage=RedisStorage(redis=redis))
     dp.include_router(rout)

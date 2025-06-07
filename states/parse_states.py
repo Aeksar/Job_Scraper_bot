@@ -5,4 +5,4 @@ class ParseStates(StatesGroup):
     text = State()
     city = State()
     salary = State()
-    notification = State()
+    experience = State()

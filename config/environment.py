@@ -23,3 +23,8 @@ class redis_cfg:
     PASSWORD = os.getenv("REDIS_PASSWORD")
     USERNAME = os.getenv("REDIS_USERNAME")
     DB = os.getenv("REDIS_HOST_DB")
+    
+    @classmethod
+    def url(cls) -> str:
+        return f"redis://{cls.USERNAME}:{cls.PASSWORD}@{cls.HOST}:{cls.PORT}/{cls.DB}"
+    

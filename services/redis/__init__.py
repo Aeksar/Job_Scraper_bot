@@ -1,1 +1,1 @@
-from .conf import get_redis_client
+from .conf import redis

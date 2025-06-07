@@ -1,25 +1,43 @@
 from aiogram.types import BufferedInputFile
+from datetime import datetime, timedelta
+from aio_pika.abc import AbstractQueue
+from typing import Optional
 import pandas as pd
 import aio_pika
 import json
 import io
 
-from services.redis import get_redis_client
+from services.redis import redis
+from services.rabbit.conf import TTL
 from handlers.parse_handlers import Bot
-from config import TOKEN
+from config import TOKEN, logger
 
 
-async def process_message(message: aio_pika.IncomingMessage):
+async def wait_consume(callback_queue: AbstractQueue, chat_id: int):
+    global TTL
+    wait_until = datetime.now() + timedelta(milliseconds=TTL)
+    while datetime.now() < wait_until:
+        try:
+            message = await callback_queue.get()
+        except aio_pika.exceptions.QueueEmpty:
+            continue
+        else:
+            await consume_message(message)
+            return
+    await send_response_to_user(chat_id)
+
+
+async def consume_message(message: aio_pika.IncomingMessage):
     async with message.process():
         correlation_id = message.correlation_id
-        redis = await get_redis_client()
+        logger.info(f"Take response for {correlation_id}")
         if chat_id := await redis.get(correlation_id):
-            result: list[dict[str, str]] = json.loads(message.body.decode())
+            result: list[dict[str, str]] = json.loads(message.body.decode())   
             await send_response_to_user(chat_id, result)
             await redis.delete(correlation_id)
-            
+    
 
-async def send_response_to_user(chat_id: int, result: list[dict[str, str]]=None):
+async def send_response_to_user(chat_id: int, result: Optional[list[dict]]):
     if result:
         file_bytes = to_exel_buf(result)
         file = BufferedInputFile(file_bytes, "Results.xlsx")

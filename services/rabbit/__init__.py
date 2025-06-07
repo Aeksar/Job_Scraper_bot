@@ -1,1 +1,1 @@
-from .produce import send_message
+from .produce import process_message

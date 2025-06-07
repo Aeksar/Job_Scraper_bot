@@ -4,7 +4,7 @@ from datetime import timedelta
 from config import redis_cfg, logger
 
 
-async def get_redis_client() -> Redis:
+def get_redis_client() -> Redis:
     
     try:
         redis_conn = Redis(
@@ -15,10 +15,11 @@ async def get_redis_client() -> Redis:
             db=redis_cfg.DB,
             decode_responses=True
         ) 
-        await redis_conn.ping()
         logger.debug(f'Successful connect to redis')
         return redis_conn
     
     except Exception as e:
         logger.error(f'Error with connect to redis: {e}')
         raise
+    
+redis = get_redis_client()
