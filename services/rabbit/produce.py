@@ -16,16 +16,15 @@ async def process_message(chat_id: int, message: dict[str, str]):
     conn = await get_conection()
     corelation_id = str(uuid.uuid4())
     await redis.set(corelation_id, chat_id, ex=int(TTL/1000+3))
-    callback_queue = await produce_message(corelation_id, message, conn)
-    await wait_consume(callback_queue, chat_id)
-    await conn.close()
+    await produce_message(corelation_id, message, conn)
     
     
 async def produce_message(corelation_id: str, data: dict[str, str], connection: AbstractConnection):
     ch, callback_queue  = await setup_rabbit(connection)
     payload = {
         "title": "hh",
-        "data": data
+        "data": data,
+        "only_new": False
     }
     message = aio_pika.Message(
         body=json.dumps(payload).encode(),
@@ -37,8 +36,6 @@ async def produce_message(corelation_id: str, data: dict[str, str], connection: 
         routing_key=rabbit_cfg.PRODUCE_ROUTING_KEY,
     )
     logger.info(f"Send message to MQ -> {payload}")
-    
-    return callback_queue
     
 
 

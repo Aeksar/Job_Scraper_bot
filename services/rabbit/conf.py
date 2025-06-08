@@ -17,6 +17,6 @@ async def setup_rabbit(connection: AbstractConnection):
     channel = await connection.channel()
     await channel.set_qos(prefetch_count=1)
     args = {"x-message-ttl" : TTL}
-    await channel.declare_queue("parse", arguments=args)
-    callback_queue = await channel.declare_queue(exclusive=True)
+    await channel.declare_queue(rabbit_cfg.PRODUCE_ROUTING_KEY, arguments=args)
+    callback_queue = await channel.declare_queue(rabbit_cfg.MQ_CONSUME_QUEUE)
     return channel, callback_queue

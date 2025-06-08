@@ -9,9 +9,9 @@ from aiogram.types import (
 from aiogram.fsm.context import FSMContext
 from typing import Optional
 
-from states import ParseStates
+from states import ParseStates, SubscribeStates
+from handlers.subscribe import subscribe_ask
 from services.rabbit import process_message
-from config import logger
 
 rout = Router()
 
@@ -49,7 +49,9 @@ state_actions = {
         "question": "Поиск вакансий\nЭто может занять 10-15 секунд\n60 край брат",
         "keyboard_arg": None,
         "data_key": "salary"
-    }
+    },
+    
+    
 }
 
 @rout.message(Command("parse"))
@@ -80,7 +82,7 @@ async def skip_question(callback: CallbackQuery, state: FSMContext):
     await process_action(callback.message, state, action)
             
 
-async def process_action(msg: Message, state: FSMContext, action: dict[Optional[str], Optional[str]]):
+async def process_action(msg: Message, state: FSMContext, action: dict):
     if action["state"] is not None:
         kb = create_skip_keyboard(action["keyboard_arg"])
         await msg.answer(action["question"], reply_markup=kb)
@@ -89,5 +91,7 @@ async def process_action(msg: Message, state: FSMContext, action: dict[Optional[
         await msg.answer(action["question"])
         data = await state.get_data()
         chat_id = msg.chat.id
-        await state.clear()
+        await state.set_state(SubscribeStates.ask)
+        await state.set_data(data=data)
+        await subscribe_ask(msg, state)
         await process_message(chat_id, data)
