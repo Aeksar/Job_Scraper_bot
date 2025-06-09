@@ -6,7 +6,7 @@ from config import rabbit_cfg, logger
 TTL = 60000
 
 async def get_conection():
-    url = rabbit_cfg.get_url()
+    url = rabbit_cfg.url()
     connection =  await aio_pika.connect_robust(url)
     logger.info("Successful connect to rabbit")
     return connection

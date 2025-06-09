@@ -14,7 +14,7 @@ class rabbit_cfg:
     MQ_CONSUME_QUEUE = os.getenv("MQ_CONSUME_QUEUE")
     
     @classmethod
-    def get_url(cls) -> str:
+    def url(cls) -> str:
         return f"amqp://{cls.USER}:{cls.PASSWORD}@{cls.HOST}:{cls.PORT}"
         
         
