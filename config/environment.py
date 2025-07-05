@@ -31,12 +31,12 @@ class redis_cfg:
     
 
 class mongo_cfg:
-    MONGO_USERNAME=os.getenv("MONGO_INITDB_ROOT_USERNAME")
-    MONGO_PASSWORD=os.getenv("MONGO_INITDB_ROOT_PASSWORD")
-    MONGO_DATABASE=os.getenv("MONGO_INITDB_DATABASE")
-    MONGO_HOST=os.getenv("MONGO_HOST")
-    MONGO_PORT=os.getenv("MONGO_PORT")
+    USERNAME=os.getenv("MONGO_INITDB_ROOT_USERNAME")
+    PASSWORD=os.getenv("MONGO_INITDB_ROOT_PASSWORD")
+    DATABASE=os.getenv("MONGO_INITDB_DATABASE")
+    HOST=os.getenv("MONGO_HOST")
+    PORT=os.getenv("MONGO_PORT")
     
     @classmethod
     def url(cls) -> str:
-        return f"mongodb://{cls.MONGO_USERNAME}:{cls.MONGO_PASSWORD}@{cls.MONGO_HOST}:{cls.MONGO_PORT}/"
+        return f"mongodb://{cls.USERNAME}:{cls.PASSWORD}@{cls.HOST}:{cls.PORT}/"

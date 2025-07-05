@@ -93,5 +93,5 @@ async def process_action(msg: Message, state: FSMContext, action: dict):
         chat_id = msg.chat.id
         await state.set_state(SubscribeStates.ask)
         await state.set_data(data=data)
-        await subscribe_ask(msg, state)
+        await subscribe_ask(msg)
         await process_message(chat_id, data)

@@ -8,23 +8,27 @@ import uuid
 from services.rabbit.conf import setup_rabbit, TTL, get_conection
 from services.rabbit.consume import wait_consume
 from services.redis import redis
+from services.mongo import TaskCollection, mongo_client
 from config import logger, rabbit_cfg
 
 
-async def process_message(chat_id: int, message: dict[str, str]):
+async def process_message(chat_id: int, params: dict[str, str]):
     global TTL
     conn = await get_conection()
     corelation_id = str(uuid.uuid4())
     await redis.set(corelation_id, chat_id, ex=int(TTL/1000+3))
-    await produce_message(corelation_id, message, conn)
+    task_id = await TaskCollection(mongo_client).add(params)
+    await produce_message(corelation_id, str(task_id), conn)
     
     
-async def produce_message(corelation_id: str, data: dict[str, str], connection: AbstractConnection):
+async def produce_message(corelation_id: str, task_id: dict[str, str], connection: AbstractConnection):
     ch, callback_queue  = await setup_rabbit(connection)
     payload = {
         "title": "hh",
-        "data": data,
-        "only_new": False
+        "task_id": task_id,
+        "options": {
+            "only_new": False
+        }
     }
     message = aio_pika.Message(
         body=json.dumps(payload).encode(),
